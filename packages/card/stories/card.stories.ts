@@ -1,14 +1,14 @@
-/*
-Copyright 2020 Adobe. All rights reserved.
-This file is licensed to you under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License. You may obtain a copy
-of the License at http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software distributed under
-the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
-OF ANY KIND, either express or implied. See the License for the specific language
-governing permissions and limitations under the License.
-*/
+/**
+ * Copyright 2025 Adobe. All rights reserved.
+ * This file is licensed to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ * of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
 import { html, TemplateResult } from '@spectrum-web-components/base';
 
 import '@spectrum-web-components/card/sp-card.js';
@@ -20,6 +20,7 @@ import '@spectrum-web-components/menu/sp-menu.js';
 import '@spectrum-web-components/menu/sp-menu-item.js';
 import '@spectrum-web-components/menu/sp-menu-divider.js';
 import '@spectrum-web-components/link/sp-link.js';
+import { ifDefined } from '@spectrum-web-components/base/src/directives.js';
 
 export default {
     component: 'sp-card',
@@ -342,7 +343,7 @@ export const smallQuiet = (args: StoryArgs): TemplateResult => {
     return html`
         <div>
             <sp-card
-                size=${args.size}
+                size=${ifDefined(args.size)}
                 ?horizontal=${args.horizontal}
                 heading="Card Heading"
                 subheading="JPG"
@@ -413,5 +414,38 @@ export const SlottedHeading = (args: StoryArgs): TemplateResult => {
                 <sp-menu-item disabled>Make Work Path</sp-menu-item>
             </sp-action-menu>
         </sp-card>
+    `;
+};
+export const ScrollTest = (): TemplateResult => {
+    return html`
+        <div class="scroll-container">
+            <div class="scroll-indicator">
+                <h3>Switch to mobile view to test touch behavior.</h3>
+                <p>
+                    In mobile view, verify that touch events work correctly and
+                    scrolling doesn't trigger unwanted clicks.
+                </p>
+            </div>
+            ${Array.from(
+                { length: 20 },
+                () => html`
+                    <div style="margin: 10px;">
+                        <sp-card
+                            heading="Card Heading"
+                            subheading="JPG"
+                            ?horizontal=${false}
+                            style="width: 200px;"
+                        >
+                            <img
+                                slot="cover-photo"
+                                src=${portrait}
+                                alt="Demo Graphic"
+                            />
+                            <div slot="footer">Footer</div>
+                        </sp-card>
+                    </div>
+                `
+            )}
+        </div>
     `;
 };
