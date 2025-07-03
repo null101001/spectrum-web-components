@@ -1,14 +1,14 @@
-/*
-Copyright 2020 Adobe. All rights reserved.
-This file is licensed to you under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License. You may obtain a copy
-of the License at http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software distributed under
-the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
-OF ANY KIND, either express or implied. See the License for the specific language
-governing permissions and limitations under the License.
-*/
+/**
+ * Copyright 2025 Adobe. All rights reserved.
+ * This file is licensed to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ * of the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+ * OF ANY KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
 
 import {
     CSSResultArray,
@@ -76,6 +76,9 @@ export class Card extends LikeAnchor(
     set selected(selected: boolean) {
         if (selected === this.selected) return;
         this._selected = selected;
+        if (this.role === 'row' && this.toggles) {
+            this.setAttribute('aria-selected', String(this.selected));
+        }
         this.requestUpdate('selected', !this._selected);
     }
 
@@ -93,6 +96,9 @@ export class Card extends LikeAnchor(
     @property({ type: Boolean, reflect: true })
     public focused = false;
 
+    /**
+     * Indicates whether the card can be toggled between selected and unselected states.
+     */
     @property({ type: Boolean, reflect: true })
     public toggles = false;
 
@@ -186,21 +192,46 @@ export class Card extends LikeAnchor(
         }
     }
 
-    private handlePointerdown(event: Event): void {
+    /**
+     * Handles pointer down events on the card element.
+     * Implements a click detection system that distinguishes between clicks and drags
+     * based on duration and movement distance.
+     */
+    private handlePointerdown(event: PointerEvent): void {
         const path = event.composedPath();
         const hasAnchor = path.some(
             (el) => (el as HTMLElement).localName === 'a'
         );
         if (hasAnchor) return;
-        const start = +new Date();
-        const handleEnd = (): void => {
-            const end = +new Date();
-            if (end - start < 200) {
+        // Record the time and initial position of the pointerdown event
+        const startTime = event.timeStamp;
+        const startX = event.clientX;
+        const startY = event.clientY;
+
+        // Define the handler for when the pointer interaction ends
+        const handleEnd = (endEvent: PointerEvent): void => {
+            const endTime = endEvent.timeStamp;
+            const endX = endEvent.clientX;
+            const endY = endEvent.clientY;
+
+            // Calculate time duration and movement distance of the pointer
+            const timeDelta = endTime - startTime;
+            const moveX = Math.abs(endX - startX);
+            const moveY = Math.abs(endY - startY);
+
+            // Consider the pointer interaction a "click" only if:
+            // - It was short (under 200ms)
+            // - It didn't move significantly (less than 10px in any direction)
+            const moved = moveX > 10 || moveY > 10;
+
+            if (timeDelta < 200 && !moved) {
                 this.click();
             }
+
             this.removeEventListener('pointerup', handleEnd);
             this.removeEventListener('pointercancel', handleEnd);
         };
+
         this.addEventListener('pointerup', handleEnd);
         this.addEventListener('pointercancel', handleEnd);
     }
@@ -266,77 +297,105 @@ export class Card extends LikeAnchor(
     }
 
     protected override render(): TemplateResult {
+        /* When rendering the card within a grid,
+        where the card has role="row", the row have an
+        immediate descendant of role="gridcell", otherwise
+        the role for the content wrapper can remain undefined. */
+        const roleForWrapper = this.role === 'row' ? 'gridcell' : undefined;
         return html`
-            ${this.renderImage()}
-            <div class="body">
-                <div class="header">
-                    ${this.renderHeading}
-                    ${this.variant === 'gallery'
-                        ? this.renderSubtitleAndDescription
-                        : nothing}
-                    ${this.variant !== 'quiet' || this.size !== 's'
+            <div class="wrapper" role=${ifDefined(roleForWrapper)}>
+                ${this.renderImage()}
+                <div class="body">
+                    <div class="header">
+                        ${this.renderHeading}
+                        ${this.variant === 'gallery'
+                            ? this.renderSubtitleAndDescription
+                            : nothing}
+                        ${this.variant !== 'quiet' || this.size !== 's'
+                            ? html`
+                                  <div
+                                      class="action-button"
+                                      @pointerdown=${this.stopPropagationOnHref}
+                                  >
+                                      <slot name="actions"></slot>
+                                  </div>
+                              `
+                            : nothing}
+                    </div>
+                    ${this.variant !== 'gallery'
                         ? html`
-                              <div
-                                  class="action-button"
-                                  @pointerdown=${this.stopPropagationOnHref}
-                              >
-                                  <slot name="actions"></slot>
+                              <div class="content">
+                                  ${this.renderSubtitleAndDescription}
                               </div>
                           `
                         : nothing}
                 </div>
-                ${this.variant !== 'gallery'
+                ${this.href
+                    ? this.renderAnchor({
+                          id: 'like-anchor',
+                          labelledby: 'heading',
+                      })
+                    : nothing}
+                ${this.variant === 'standard'
                     ? html`
-                          <div class="content">
-                              ${this.renderSubtitleAndDescription}
+                          <slot name="footer"></slot>
+                      `
+                    : nothing}
+                ${this.toggles
+                    ? html`
+                          <sp-popover
+                              class="checkbox-toggle"
+                              @pointerdown=${this.stopPropagationOnHref}
+                          >
+                              <sp-checkbox
+                                  class="checkbox"
+                                  @change=${this.handleSelectedChange}
+                                  .checked=${this.selected}
+                              >
+                                  <span class="sr-only">
+                                      ${this.label || this.heading}
+                                  </span>
+                              </sp-checkbox>
+                          </sp-popover>
+                      `
+                    : nothing}
+                ${this.variant === 'quiet' && this.size === 's'
+                    ? html`
+                          <div
+                              class="spectrum-QuickActions actions"
+                              @pointerdown=${this.stopPropagationOnHref}
+                          >
+                              <slot name="actions"></slot>
                           </div>
                       `
                     : nothing}
             </div>
-            ${this.href
-                ? this.renderAnchor({
-                      id: 'like-anchor',
-                      labelledby: 'heading',
-                  })
-                : nothing}
-            ${this.variant === 'standard'
-                ? html`
-                      <slot name="footer"></slot>
-                  `
-                : nothing}
-            ${this.toggles
-                ? html`
-                      <sp-popover
-                          class="checkbox-toggle"
-                          @pointerdown=${this.stopPropagationOnHref}
-                      >
-                          <sp-checkbox
-                              class="checkbox"
-                              @change=${this.handleSelectedChange}
-                              ?checked=${this.selected}
-                              tabindex="-1"
-                          ></sp-checkbox>
-                      </sp-popover>
-                  `
-                : nothing}
-            ${this.variant === 'quiet' && this.size === 's'
-                ? html`
-                      <div
-                          class="spectrum-QuickActions actions"
-                          @pointerdown=${this.stopPropagationOnHref}
-                      >
-                          <slot name="actions"></slot>
-                      </div>
-                  `
-                : nothing}
         `;
     }
 
     protected override firstUpdated(changes: PropertyValues): void {
         super.firstUpdated(changes);
+        if (changes.has('label')) {
+            if (this.label) {
+                this.setAttribute('aria-label', this.label);
+            } else {
+                this.removeAttribute('aria-label');
+            }
+        }
         this.addEventListener('pointerdown', this.handlePointerdown);
         this.addEventListener('focusin', this.handleFocusin);
         this.shadowRoot.addEventListener('focusin', this.handleFocusin);
         this.addEventListener('focusout', this.handleFocusout);
+    }
+
+    protected override update(changes: PropertyValues): void {
+        super.update(changes);
+        if (changes.has('label')) {
+            if (this.label) {
+                this.setAttribute('aria-label', this.label);
+            } else {
+                this.removeAttribute('aria-label');
+            }
+        }
     }
 }
