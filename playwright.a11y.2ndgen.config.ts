@@ -9,11 +9,27 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { setProjectAnnotations } from '@storybook/web-components-vite';
 
-import preview from './preview';
+import type { PlaywrightTestConfig } from '@playwright/test';
+import {
+  a11yReporter,
+  a11yUse,
+  secondGenA11yProject,
+  secondGenComponentsOnlyStorybookServer,
+} from './playwright.a11y.shared.config';
 
-// This is an important step to apply the right configuration when testing your stories.
-// More info at: https://storybook.js.org/docs/api/portable-stories/portable-stories-vitest#setprojectannotations
-// @ts-expect-error Preview object shape is valid at runtime; Storybook types are too strict here.
-setProjectAnnotations([preview]);
+const config: PlaywrightTestConfig = {
+  timeout: 30 * 1000,
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  reporter: a11yReporter(!!process.env.CI),
+
+  use: a11yUse,
+
+  projects: [secondGenA11yProject],
+
+  webServer: secondGenComponentsOnlyStorybookServer,
+};
+
+export default config;
