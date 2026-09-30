@@ -33,6 +33,7 @@
     "prompt-field-pixel-loader",
     "publish-custom-elements-manifest",
     "quiet-patterns-rename",
+    "response-status-conversation-turn-fixes",
     "response-status-figma-parity",
     "slot-observer-controllers",
     "soft-ravens-think",
